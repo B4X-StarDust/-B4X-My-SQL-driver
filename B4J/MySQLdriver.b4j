@@ -1,0 +1,255 @@
+﻿AppType=JavaFX
+Build1=Default,b4j.example
+File1=Layout1.bjl
+FileGroup1=Default Group
+Group=Default Group
+Library1=b4xcollections
+Library2=byteconverter
+Library3=jcore
+Library4=jfx
+Library5=jnetwork
+Library6=jrandomaccessfile
+Library7=jxui
+Library8=encryption
+Module1=|relative|..\db_test
+Module2=|relative|..\MyResultSet
+Module3=|relative|..\MySQLdriver
+NumberOfFiles=1
+NumberOfLibraries=8
+NumberOfModules=3
+Version=10.3
+@EndOfDesignText@
+#Region Project Attributes 
+	#MainFormWidth: 1000
+	#MainFormHeight: 600 
+#End Region
+
+Sub Process_Globals
+	Private fx As JFX
+	Private MainForm As Form
+	Private xui As XUI
+	
+	Dim db As db_test
+	Dim db2 As MySQLdriver
+	
+	Private TextAddress As TextField
+	Private TextUser As TextField
+	Private TextPassword As TextField
+
+	Private ButtonConn As Button
+	Private ButtonConn2 As Button
+	Private ButtonQuery As B4XView
+	Private ButtonQuery2 As B4XView
+	
+	Private CBdatabase As ComboBox
+	Private CBdatabase2 As ComboBox
+	Private CBTable As ComboBox
+	Private CBTable2 As ComboBox
+	Private TableView1 As TableView
+End Sub
+
+Sub AppStart (Form1 As Form, Args() As String)
+	MainForm = Form1
+	MainForm.RootPane.LoadLayout("Layout1")
+	MainForm.Show
+	
+	db.Initialize(Me,"db")
+	db2.Initialize(Me,"db2")
+	
+	TextUser.Text="dusty"
+	TextPassword.Text="123456"
+End Sub
+
+Private Sub ButtonConn_Click
+	db.Connect(TextAddress.Text,TextUser.text,TextPassword.Text)
+	Wait For db_Connected (Success As Boolean, Message As String)
+	If Success Then
+		ButtonConn.Text="Connected"
+		db.executeQuery("SHOW DATABASES")
+		CBdatabase.Enabled=True
+		CBdatabase.Items.Clear
+		wait for db_QueryResult (Success As Boolean)
+		If Success Then
+			For r=0 To db.rowSize-1
+				For c=0 To db.colSize-1
+					If db.GetFieldType(c)<249 Or db.GetFieldType(c)>251 Then
+						LogColor(" " & db.GetString(c,r),xui.Color_Blue)
+						CBdatabase.Items.Add(db.GetString(c,r))
+					Else
+						'LogColor("°°°",xui.Color_Blue)
+					End If
+				Next
+				Log("__________________")
+			Next
+		End If
+	Else
+		ButtonConn.Text="Connect"
+		xui.MsgboxAsync("Don't connected","ALERT")
+	End If
+	
+End Sub
+
+private Sub CBdatabase_SelectedIndexChanged(Index As Int, Value As Object)
+	Log ("USE DB: "  & Value)
+	db.executeQuery("USE " & Value)
+	wait for db_QueryResult (Success As Boolean)
+	ButtonQuery.Enabled=Success
+	CBTable.Enabled=Success
+	CBTable.Items.Clear
+	If Success Then
+		db.executeQuery("SHOW TABLES")
+		wait for db_QueryResult (Success As Boolean)
+		If Success Then
+			For r=0 To db.rowSize-1
+				For c=0 To db.colSize-1
+					If db.GetFieldType(c)<249 Or db.GetFieldType(c)>251 Then CBTable.Items.Add(db.GetString(c,r))
+				Next
+			Next
+		End If
+	End If
+End Sub
+
+private Sub CBTable_SelectedIndexChanged(Index As Int, Value As Object)
+	Log("** Select table: " & Value)
+	db.executeQuery("SHOW COLUMNS FROM " & Value)
+	wait for db_QueryResult (Success As Boolean)
+	If Success Then
+		Dim L As List
+		L.initialize
+		Log("Fields: " & db.rowSize)
+		For r=0 To db.rowSize-1
+			For c=0 To 0 'db.colSize-1
+				If db.GetFieldType(c)<249 Or db.GetFieldType(c)>251 Then
+					Log(db.GetString(c,r))
+					' 0 = name
+					' 1 = type
+					' 2 = NOT null
+					' 3 = PRIMARY
+					' 4 = zero
+					' 5 = default (autoincremental,'0')
+					L.Add(db.GetString(c,r))
+				End If
+			Next
+		Next
+		TableView1.Items.Clear
+		TableView1.SetColumns(L)
+		Log("_______________")
+	End If
+End Sub
+
+private Sub ButtonQuery_Click
+	'db.executeQuery("SELECT * FROM my_dust.e_dipendenti")
+	db.executeQuery($"SELECT * FROM ${CBTable.Value}"$)
+	wait for db_QueryResult (Success As Boolean)
+	If Success Then
+		TableView1.Items.Clear
+		For r=0 To db.rowSize-1
+			Dim row(db.colSize) As Object
+			For c=0 To db.colSize-1
+				If db.GetFieldType(c)<249 Or db.GetFieldType(c)>251 Then
+					Log(" " & db.GetString(c,r))
+					row(c)=db.GetString(c,r)
+				End If
+			Next
+			TableView1.Items.add(row)
+			Sleep(0)
+			Log("__________________")
+		Next
+		
+	End If
+End Sub
+
+' SECOND
+Private Sub ButtonConn2_Click
+	db2.Connect(TextAddress.Text,TextUser.text,TextPassword.Text)
+	Wait For db2_Connected (Success As Boolean, Message As String)
+	If Success Then
+		ButtonConn2.Text="Connected"
+		db2.executeQuery("SHOW DATABASES")
+		CBdatabase2.Enabled=True
+		CBdatabase2.Items.Clear
+		wait for db2_QueryResult (Success As Boolean)
+		If Success Then
+			Do While db2.ResultSetNext
+				For c=0 To db2.colSize-1
+					If db2.GetFieldType(c)<249 Or db2.GetFieldType(c)>251 Then
+						'LogColor(" " & db2.GetString(c,r),xui.Color_Blue)
+						CBdatabase2.Items.Add(db2.GetString2(c))
+					Else
+						LogColor("°°°",xui.Color_Blue)
+					End If
+				Next
+			Loop
+		End If
+	Else
+		ButtonConn2.Text="Connect"
+		xui.MsgboxAsync(Message,"Don't connected")
+	End If
+End Sub
+
+private Sub CBdatabase2_SelectedIndexChanged(Index As Int, Value As Object)
+	Log ("USE DB: "  & Value)
+	db2.executeQuery("USE " & Value)
+	wait for db2_QueryResult (Success As Boolean)
+	ButtonQuery2.Enabled=Success
+	CBTable2.Enabled=Success
+	CBTable2.Items.Clear
+	If Success Then
+		db2.executeQuery("SHOW TABLES")
+		wait for db2_QueryResult (Success As Boolean)
+		If Success Then
+			Do While db2.ResultSetNext
+				For c=0 To db2.colSize-1
+					'If db2.GetFieldType(c)<249 Or db2.GetFieldType(c)>251 Then CBTable2.Items.Add(db2.GetString3(c,r))
+					If db2.GetFieldType(c)<249 Or db2.GetFieldType(c)>251 Then CBTable2.Items.Add(db2.GetString2(c))
+				Next
+			Loop
+		End If
+	End If
+End Sub
+
+private Sub CBTable2_SelectedIndexChanged(Index As Int, Value As Object)
+	Log("** Select table: " & Value)
+	db2.executeQuery("SHOW COLUMNS FROM " & Value)
+	wait for db2_QueryResult (Success As Boolean)
+	If Success Then
+		Dim L As List
+		L.initialize
+		Log("Fields: " & db2.rowSize)
+		Do While db2.ResultSetNext
+			If db2.GetFieldType(0)<249 Or db2.GetFieldType(0)>251 Then
+				'Log(db2.GetString3(0,r))
+				Log(db2.GetString2(0))
+				' 0 = name
+				' 1 = type
+				' 2 = NOT null
+				' 3 = PRIMARY
+				' 4 = zero
+				' 5 = default (autoincremental,'0')
+				L.Add(db2.GetString2(0))
+			End If
+		Loop
+		TableView1.Items.Clear
+		TableView1.SetColumns(L)
+		Log("_______________________")
+	End If
+End Sub
+
+
+private Sub ButtonQuery2_Click
+	db2.executeQuery($"SELECT * FROM ${CBTable2.Value}"$)
+	wait for db2_QueryResult (Success As Boolean)
+	If Success Then
+		TableView1.Items.Clear
+		Do While db2.ResultSetNext
+			Dim row(db2.colSize) As Object
+			For c=0 To db2.colSize-1
+				If db2.GetFieldType(c)<249 Or db2.GetFieldType(c)>251 Then
+					row(c)=db2.GetString2(c)
+				End If
+			Next
+			TableView1.Items.add(row)
+			Sleep(0)
+		Loop
+	End If
+End Sub
