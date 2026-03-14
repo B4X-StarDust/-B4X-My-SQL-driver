@@ -1,0 +1,190 @@
+﻿Build1=Default,b4a.example
+File1=Layout1.bal
+FileGroup1=Default Group
+Group=Default Group
+Library1=b4xcollections
+Library2=byteconverter
+Library3=core
+Library4=encryption
+Library5=network
+Library6=randomaccessfile
+Library7=xui
+Library8=sd_flexgrid
+ManifestCode='This code will be applied to the manifest file during compilation.~\n~'You do not need to modify it in most cases.~\n~'See this link for for more information: https://www.b4x.com/forum/showthread.php?p=78136~\n~AddManifestText(~\n~<uses-sdk android:minSdkVersion="5" android:targetSdkVersion="28"/>~\n~<supports-screens android:largeScreens="true" ~\n~    android:normalScreens="true" ~\n~    android:smallScreens="true" ~\n~    android:anyDensity="true"/>)~\n~SetApplicationAttribute(android:icon, "@drawable/icon")~\n~SetApplicationAttribute(android:label, "$LABEL$")~\n~CreateResourceFromFile(Macro, Themes.LightTheme)~\n~'End of default text.~\n~
+Module1=|relative|..\MySQLdriver
+NumberOfFiles=1
+NumberOfLibraries=8
+NumberOfModules=1
+Version=13.4
+@EndOfDesignText@
+#Region  Project Attributes 
+	#ApplicationLabel: B4A Example
+	#VersionCode: 1
+	#VersionName: 
+	'SupportedOrientations possible values: unspecified, landscape or portrait.
+	#SupportedOrientations: unspecified
+	#CanInstallToExternalStorage: False
+#End Region
+
+#Region  Activity Attributes 
+	#FullScreen: False
+	#IncludeTitle: True
+#End Region
+
+#LibraryAuthor: 
+#LibraryName: Library
+#LibraryVersion: 1.0
+
+Sub Process_Globals
+	'These global variables will be declared once when the application starts.
+	'These variables can be accessed from all modules.
+	Private xui As XUI
+End Sub
+
+Sub Globals
+	'These global variables will be redeclared each time the activity is created.
+	
+	
+	
+	Dim db2 As MySQLdriver
+	
+	Private TextAddress As EditText
+	Private TextUser As EditText
+	Private TextPassword As EditText
+	
+	Private ButtonConn2 As Button
+	Private ButtonQuery2 As B4XView
+	
+	Private SpinnerDB As Spinner
+	Private SpinnerTable As Spinner
+	Private FlexGrid1 As FlexGrid
+End Sub
+
+Sub Activity_Create(FirstTime As Boolean)
+	Activity.LoadLayout("Layout1")
+	
+	db2.Initialize(Me,"db2")
+	
+	TextAddress.Text="192.168.1.100"
+	TextUser.Text="dusty"
+	TextPassword.Text="123456"
+End Sub
+
+Sub Activity_Resume
+
+End Sub
+
+Sub Activity_Pause (UserClosed As Boolean)
+
+End Sub
+
+Sub ButtonConn2_Click
+	Dim ls As List
+	ls.Initialize
+	SpinnerDB.Clear
+	
+	db2.Connect(TextAddress.Text,TextUser.text,TextPassword.Text)
+	Wait For db2_Connected (Success As Boolean, Message As String)
+	If Success Then
+		ButtonConn2.Text="Connected"
+		db2.executeQuery("SHOW DATABASES")
+		
+		wait for db2_QueryResult (Success As Boolean)
+		If Success Then
+			Do While db2.ResultSetNext
+				For c=0 To db2.colSize-1
+					If db2.GetFieldType(c)<249 Or db2.GetFieldType(c)>251 Then
+						'LogColor(" " & db2.GetString(c,r),xui.Color_Blue)
+						ls.Add(db2.GetString2(c))
+					Else
+						LogColor("°°°",xui.Color_Blue)
+					End If
+				Next
+			Loop
+		End If
+	Else
+		ButtonConn2.Text="Connect"
+		xui.MsgboxAsync(Message,"Don't connected")
+	End If
+	SpinnerDB.AddAll(ls)
+End Sub
+
+Private Sub SpinnerDB_ItemClick (Position As Int, Value As Object)
+	Dim ls As List
+	ls.Initialize
+	SpinnerTable.Clear
+	Log ("USE DB: "  & Value)
+	db2.executeQuery("USE " & Value)
+	wait for db2_QueryResult (Success As Boolean)
+	ButtonQuery2.Enabled=Success
+
+	If Success Then
+		db2.executeQuery("SHOW TABLES")
+		wait for db2_QueryResult (Success As Boolean)
+		If Success Then
+			Do While db2.ResultSetNext
+				For c=0 To db2.colSize-1
+					'If db2.GetFieldType(c)<249 Or db2.GetFieldType(c)>251 Then CBTable2.Items.Add(db2.GetString3(c,r))
+					If db2.GetFieldType(c)<249 Or db2.GetFieldType(c)>251 Then ls.Add(db2.GetString2(c))
+				Next
+			Loop
+		End If
+	End If
+	SpinnerTable.AddAll(ls)
+End Sub
+
+
+Private Sub SpinnerTable_ItemClick (Position As Int, Value As Object)
+	Log("** Select table: " & Value)
+	db2.executeQuery("SHOW COLUMNS FROM " & Value)
+	wait for db2_QueryResult (Success As Boolean)
+	If Success Then
+		Dim L As List
+		L.initialize
+		Log("Fields: " & db2.rowSize)
+		Do While db2.ResultSetNext
+			If db2.GetFieldType(0)<249 Or db2.GetFieldType(0)>251 Then
+				'Log(db2.GetString3(0,r))
+				Log(db2.GetString2(0))
+				' 0 = name
+				' 1 = type
+				' 2 = NOT null
+				' 3 = PRIMARY
+				' 4 = zero
+				' 5 = default (autoincremental,'0')
+				L.Add(db2.GetString2(0))
+			End If
+		Loop
+		FlexGrid1.ColsName=ListToArray(L)
+
+		Log("_______________________")
+	End If
+End Sub
+
+Public Sub ListToArray(lstFrom As List) As String()
+	Dim totLst As Int: totLst = lstFrom.Size
+	Dim rslt(totLst) As String
+	Dim i As Int
+	For i = 0 To totLst -1
+		rslt(i) = lstFrom.Get(i)
+	Next
+	Return rslt
+End Sub
+
+private Sub ButtonQuery2_Click
+	db2.executeQuery($"SELECT * FROM ${SpinnerTable.SelectedItem}"$)
+	wait for db2_QueryResult (Success As Boolean)
+	If Success Then
+		'TableView1.Items.Clear
+		Do While db2.ResultSetNext
+			Dim row(db2.colSize) As Object
+			For c=0 To db2.colSize-1
+				If db2.GetFieldType(c)<249 Or db2.GetFieldType(c)>251 Then
+					row(c)=db2.GetString2(c)
+				End If
+			Next
+			FlexGrid1.AddRow(row,True)
+			Sleep(0)
+		Loop
+	End If
+End Sub
